@@ -29,15 +29,37 @@ from sprites import PersonSprite, ElevatorSprite
 class Elevator(ElevatorSprite):
     """An elevator in the elevator simulation.
 
-    Remember to add additional documentation to this class docstring
-    as you add new attributes (and representation invariants).
-
     === Attributes ===
-    passengers: A list of the people currently on this elevator
+    passengers: A list of the people currently on this elevator; the later
+        passengers are appended, so the order from earliest to latest boarding
+        is read from left to right
+    current_floor: An int describing the floor the elevator is on
+    capacity: the maximum number of people possible
 
     === Representation invariants ===
+    current_floor > 0
+    capacity > 0
     """
     passengers: List[Person]
+    current_floor: int
+    capacity: int
+
+    def __init__(self, capacity: int):
+        ElevatorSprite.__init__(self)
+        self.passengers = []
+        self.current_floor = 1
+        self.capacity = capacity
+
+    def fullness(self) -> float:
+        """Return the fraction that this elevator is filled.
+
+           The value returned should be a float between 0.0 (completely empty) and
+           1.0 (completely full).
+        """
+        return float(len(self.passengers) / self.capacity)
+
+
+ANGER_LEVELS = {0:0, 1:0, 2:0, 3:1, 4:1, 5:2, 6:2, 7:3, 8:3}
 
 
 class Person(PersonSprite):
@@ -57,6 +79,13 @@ class Person(PersonSprite):
     target: int
     wait_time: int
 
+    def __init__(self, start: int, target: int, wait_time: int):
+        PersonSprite.__init__(self)
+        self.start = start
+        self.target = target
+        self.wait_time = wait_time
+
+
     def get_anger_level(self) -> int:
         """Return this person's anger level.
 
@@ -68,7 +97,7 @@ class Person(PersonSprite):
             - Level 3: waiting 7-8 rounds
             - Level 4: waiting >= 9 rounds
         """
-        pass
+        return ANGER_LEVELS.get(self.wait_time, 4)  # 4 is the default value
 
 
 if __name__ == '__main__':
