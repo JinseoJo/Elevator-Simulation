@@ -142,11 +142,48 @@ class MovingAlgorithm:
         """
         raise NotImplementedError
 
+    def no_one_waiting(self, waiting: Dict[int, List[Person]]) -> bool:
+        """ A helper function for the moving algorithms
+
+        Returns True if no one is waiting, False otherwise
+        """
+        for floor in waiting.keys():
+            if waiting[floor]:
+                return False
+        return True
+
+    def get_direction(self, target, current) -> Direction:
+        """ A helper function for the moving algorithms
+
+        Returns the direction of travel for a given current position and target
+        """
+        if target < current:
+            return Direction.DOWN
+        elif target == current:
+            return Direction.STAY
+        else:
+            return Direction.UP
+
 
 class RandomAlgorithm(MovingAlgorithm):
     """A moving algorithm that picks a random direction for each elevator.
+    Returns a list of Directions
     """
-    pass
+    def move_elevators(self,
+                       elevators: List[Elevator],
+                       waiting: Dict[int, List[Person]],
+                       max_floor: int) -> List[Direction]:
+        directions = []
+        choices = [Direction.UP, Direction.DOWN, Direction.STAY]
+        for e in elevators:
+            valid = False
+            while not valid:
+                r = random.sample(choices, k=1)
+                potential_floor = e.current_floor + r[0].value
+                if 0 < potential_floor <= max_floor:
+                    directions.append(r[0])
+                    valid = True
+        return directions
 
 
 class PushyPassenger(MovingAlgorithm):
@@ -158,7 +195,36 @@ class PushyPassenger(MovingAlgorithm):
     If the elevator isn't empty, it moves towards the target floor of the
     *first* passenger who boarded the elevator.
     """
-    pass
+    def move_elevators(self,
+                       elevators: List[Elevator],
+                       waiting: Dict[int, List[Person]],
+                       max_floor: int) -> List[Direction]:
+        directions = []
+        for e in elevators:
+            num_people = len(e.passengers)
+            if num_people == 0 and self.no_one_waiting(waiting):
+                directions.append(Direction.STAY)
+            elif num_people == 0:
+                directions.append(self._move_to_lowest_waiting(waiting, e))
+            else:
+                first_passenger = e.passengers[0]
+                destination = first_passenger.target
+                directions.append(self.get_direction(destination, e.current_floor))
+        return directions
+
+    def _move_to_lowest_waiting(self, waiting: Dict[int, List[Person]],
+                                e: Elevator) -> Direction:
+        """ Moves to the lowest floor that has at least one person waiting
+            Returns the direction of elevator movement
+            Precondition: there is at least one person waiting in the building
+        """
+        lowest_floor = 0
+        for floor in sorted(waiting.keys()):
+            if waiting[floor]:
+                lowest_floor = floor
+                break
+        assert lowest_floor > 0, "Error in private method: lowest waiting"
+        return self.get_direction(lowest_floor, e.current_floor)
 
 
 class ShortSighted(MovingAlgorithm):
@@ -172,7 +238,59 @@ class ShortSighted(MovingAlgorithm):
 
     In this case, the order in which people boarded does *not* matter.
     """
-    pass
+    def move_elevators(self,
+                       elevators: List[Elevator],
+                       waiting: Dict[int, List[Person]],
+                       max_floor: int) -> List[Direction]:
+        directions = []
+        for e in elevators:
+            num_people = len(e.passengers)
+            if num_people == 0 and self.no_one_waiting(waiting):
+                directions.append(Direction.STAY)
+            elif num_people == 0:
+                direction = self.move_to_closest_waiting(waiting, max_floor, e)
+                directions.append(direction)
+            else:
+                target_floors = [passenger.target for passenger in e.passengers]
+                curr = e.current_floor
+                gap = 1
+                found = False
+                while not found:
+                    # search the bottom
+                    if curr-gap in target_floors:
+                        directions.append(Direction.DOWN)
+                        found = True
+                    # search the top
+                    elif curr+gap in target_floors:
+                        directions.append(Direction.UP)
+                        found = True
+                    gap += 1
+        return directions
+
+    def move_to_closest_waiting(self, waiting: Dict[int, List[Person]],
+                                e: Elevator) -> Direction:
+        """ Moves to the closest floor that has at least one person waiting
+        This is called only when there's at least one person waiting in the
+        building
+        Returns the direction of movement
+
+        """
+        curr = e.current_floor
+        gap = 1
+        while True:
+            # search the bottom
+            try:
+                if waiting[curr-gap]:
+                    return Direction.DOWN
+            except KeyError:
+                pass
+            # search the top
+            try:
+                if waiting[curr+gap]:
+                    return Direction.UP
+            except KeyError:
+                pass
+            gap += 1
 
 
 if __name__ == '__main__':
