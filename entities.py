@@ -85,7 +85,7 @@ class Person(PersonSprite):
         PersonSprite.__init__(self)
         self.start = start
         self.target = target
-        self.wait_time = wait_time
+        self.wait_time = 0
 
 
     def get_anger_level(self) -> int:
