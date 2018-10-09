@@ -43,8 +43,6 @@ class Elevator(ElevatorSprite):
     passengers: List[Person]
     current_floor: int
     capacity: int
-        
-        #hello
 
     def __init__(self, capacity: int):
         ElevatorSprite.__init__(self)
@@ -81,12 +79,11 @@ class Person(PersonSprite):
     target: int
     wait_time: int
 
-    def __init__(self, start: int, target: int, wait_time: int):
-        PersonSprite.__init__(self)
+    def __init__(self, start: int, target: int):
         self.start = start
         self.target = target
         self.wait_time = 0
-
+        PersonSprite.__init__(self)
 
     def get_anger_level(self) -> int:
         """Return this person's anger level.
@@ -99,7 +96,11 @@ class Person(PersonSprite):
             - Level 3: waiting 7-8 rounds
             - Level 4: waiting >= 9 rounds
         """
+        #ANGER_LEVELS.get()
         return ANGER_LEVELS.get(self.wait_time, 4)  # 4 is the default value
+
+    def __str__(self):
+        return self.target
 
 
 if __name__ == '__main__':

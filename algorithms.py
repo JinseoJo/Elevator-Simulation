@@ -77,7 +77,26 @@ class RandomArrivals(ArrivalGenerator):
 
     Hint: look up the 'sample' function from random.
     """
-    pass
+
+    #TODO Not complete
+    def __init__(self, max_floor: int, num_people: Optional[int]) -> None:
+        ArrivalGenerator.__init__(self, max_floor, num_people)
+
+    def generate(self, round_num: int) -> Dict[int, List[Person]]:
+        new_arrivals = {}
+        floors = [i for i in range(1, self.max_floor+1)]
+        for _ in range(self.num_people):
+            start = random.randint(1, self.max_floor)
+            target = 0
+            while target != start:
+                target = random.randint(1, self.max_floor)
+            new_person = Person(start, target)
+            floor = random.sample(floors, k=1)[0]
+            try:
+                new_arrivals[floor].append(new_person)
+            except KeyError:
+                new_arrivals[floor] = [new_person]
+        return new_arrivals
 
 
 class FileArrivals(ArrivalGenerator):
@@ -175,13 +194,16 @@ class RandomAlgorithm(MovingAlgorithm):
                        max_floor: int) -> List[Direction]:
         directions = []
         choices = [Direction.UP, Direction.DOWN, Direction.STAY]
+        e_number = 0
         for e in elevators:
+            e_number += 1
+            print('elevator', e_number, 'is at floor', e.current_floor)
             valid = False
             while not valid:
-                r = random.sample(choices, k=1)
-                potential_floor = e.current_floor + r[0].value
+                r = random.sample(choices, k=1)[0]
+                potential_floor = e.current_floor + r.value
                 if 0 < potential_floor <= max_floor:
-                    directions.append(r[0])
+                    directions.append(r)
                     valid = True
         return directions
 

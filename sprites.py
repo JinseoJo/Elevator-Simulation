@@ -23,7 +23,7 @@ import pygame
 
 
 # Images for people
-FIGURES = [f'people/person{i}.png' for i in range(1, 6)]
+FIGURES = [f'person{i}.png' for i in range(1, 6)]
 
 
 WHITE = (255, 255, 255)

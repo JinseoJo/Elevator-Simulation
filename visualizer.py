@@ -163,7 +163,7 @@ class Visualizer:
             self.render()
 
     def show_elevator_moves(self,
-                            elevators: List['Elevator'],
+                            elevators: List[sprites.ElevatorSprite],
                             directions: List[Direction]) -> None:
         """Show elevator moves. Note that all the elevators move at once."""
         if not self._visualize:
