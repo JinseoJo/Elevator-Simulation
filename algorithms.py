@@ -79,9 +79,17 @@ class RandomArrivals(ArrivalGenerator):
     """
 
     def __init__(self, max_floor: int, num_people: Optional[int]) -> None:
+        """Initialize a new RandomArrivals"""
         ArrivalGenerator.__init__(self, max_floor, num_people)
 
     def generate(self, round_num: int) -> Dict[int, List[Person]]:
+        """Return the new arrivals for the simulation at the given round.
+
+        The returned dictionary maps floor number to the people who
+        arrived starting at that floor.
+
+        You can choose whether to include floors where no people arrived.
+        """
         new_arrivals = {}
         if self.num_people is not None:
             for _ in range(self.num_people):
@@ -145,6 +153,13 @@ class FileArrivals(ArrivalGenerator):
                 self.arrivals[round_number] = arrivals_list
 
     def generate(self, round_num: int) -> Dict[int, List[Person]]:
+        """Return the new arrivals for the simulation at the given round.
+
+        The returned dictionary maps floor number to the people who
+        arrived starting at that floor.
+
+        You can choose whether to include floors where no people arrived.
+        """
         new_arrivals = {}
         try:
             this_round = self.arrivals[round_num]
