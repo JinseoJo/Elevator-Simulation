@@ -25,6 +25,13 @@ from visualizer import Visualizer
 
 class SimulationParameters:
     """Helper class containing relevant parameters for Simulation class
+    
+    === Attributes ===
+    num_iterations: the number of iterations of the elevator
+    num_floors: the number of floors
+    arrival_generator: the algorithm used to generate new arrivals
+    moving_algorithm: the algorithm used to decide how to move elevators
+    
     === Representation Invariants ===
     num_iterations >= 0
     num_floors >= 2
@@ -42,7 +49,12 @@ class SimulationParameters:
 
 
 class SimulationStatistics:
-    """Helper class storing statistics for Simulation"""
+    """Helper class storing statistics for Simulation
+    
+    === Attributes ===
+    people_completed: a list of the person in this simulation
+    total_people: the total number of people in this simulation
+    """
     people_completed: List[Person]
     total_people: int
 
