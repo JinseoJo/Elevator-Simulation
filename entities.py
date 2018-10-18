@@ -45,6 +45,7 @@ class Elevator(ElevatorSprite):
     capacity: int
 
     def __init__(self, capacity: int) -> None:
+        """Initialize a new Elevator"""
         ElevatorSprite.__init__(self)
         self.passengers = []
         self.current_floor = 1
@@ -80,6 +81,7 @@ class Person(PersonSprite):
     wait_time: int
 
     def __init__(self, start: int, target: int) -> None:
+        """Initialize a new Person"""
         self.start = start
         self.target = target
         self.wait_time = 0
@@ -99,8 +101,8 @@ class Person(PersonSprite):
         #ANGER_LEVELS.get()
         return ANGER_LEVELS.get(self.wait_time, 4)  # 4 is the default value
 
-    def __str__(self) -> str:
-        return "Person from " + str(self.start) + " to " + str(self.target)
+    #def __str__(self) -> str:
+    #    return "Person from " + str(self.start) + " to " + str(self.target)
 
 
 if __name__ == '__main__':
