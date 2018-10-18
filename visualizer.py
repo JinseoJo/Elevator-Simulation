@@ -153,7 +153,7 @@ class Visualizer:
             return
 
         from_x = person.rect.centerx
-        target_x = 10
+        target_x = WIDTH - 10
 
         elevator.update()
 
@@ -163,7 +163,7 @@ class Visualizer:
             self.render()
 
     def show_elevator_moves(self,
-                            elevators: List[sprites.ElevatorSprite],
+                            elevators: List['Elevator'],
                             directions: List[Direction]) -> None:
         """Show elevator moves. Note that all the elevators move at once."""
         if not self._visualize:

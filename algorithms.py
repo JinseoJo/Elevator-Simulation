@@ -78,30 +78,32 @@ class RandomArrivals(ArrivalGenerator):
     Hint: look up the 'sample' function from random.
     """
 
-    #TODO Not complete
     def __init__(self, max_floor: int, num_people: Optional[int]) -> None:
         ArrivalGenerator.__init__(self, max_floor, num_people)
 
     def generate(self, round_num: int) -> Dict[int, List[Person]]:
         new_arrivals = {}
-        floors = [i for i in range(1, self.max_floor+1)]
-        for _ in range(self.num_people):
-            start = random.randint(1, self.max_floor)
-            target = 0
-            while target != start:
+        if self.num_people is not None:
+            for _ in range(self.num_people):
+                start = random.randint(1, self.max_floor)
                 target = random.randint(1, self.max_floor)
-            new_person = Person(start, target)
-            floor = random.sample(floors, k=1)[0]
-            try:
-                new_arrivals[floor].append(new_person)
-            except KeyError:
-                new_arrivals[floor] = [new_person]
+                while target == start:
+                    target = random.randint(1, self.max_floor)
+                new_person = Person(start, target)
+                try:
+                    new_arrivals[start].append(new_person)
+                except KeyError:
+                    new_arrivals[start] = [new_person]
         return new_arrivals
 
 
 class FileArrivals(ArrivalGenerator):
     """Generate arrivals from a CSV file.
+    arrivals: A dictionary mapping from round number to the list of people
+              generated for that round
     """
+    arrivals: Dict[int, List[Person]]
+
     def __init__(self, max_floor: int, filename: str) -> None:
         """Initialize a new FileArrivals algorithm from the given file.
 
@@ -111,11 +113,15 @@ class FileArrivals(ArrivalGenerator):
         Precondition:
             <filename> refers to a valid CSV file, following the specified
             format and restrictions from the assignment handout.
+
+        Attributes:
+        arrivals: A dictionary that maps round number to list of People
         """
         ArrivalGenerator.__init__(self, max_floor, None)
 
         # We've provided some of the "reading from csv files" boilerplate code
         # for you to help you get started.
+        self.arrivals = {}
         with open(filename) as csvfile:
             reader = csv.reader(csvfile)
             for line in reader:
@@ -123,7 +129,34 @@ class FileArrivals(ArrivalGenerator):
                 # to one line of the original file.
                 # You'll need to convert the strings to ints and then process
                 # and store them.
-                pass
+                print(line)
+                int_list = []
+                for floor in line:
+                    try:
+                        int_list.append(int(floor))
+                    except ValueError:
+                        pass
+                arrivals_list = []
+                round_number = int_list[0]
+                i = 1
+                while i in range(len(int_list)):
+                    arrivals_list.append(Person(int_list[i], int_list[i+1]))
+                    i += 2
+                self.arrivals[round_number] = arrivals_list
+
+    def generate(self, round_num: int) -> Dict[int, List[Person]]:
+        new_arrivals = {}
+        try:
+            this_round = self.arrivals[round_num]
+        except KeyError:
+            return new_arrivals
+        for person in this_round:
+            floor = person.start
+            try:
+                new_arrivals[floor].append(person)
+            except KeyError:
+                new_arrivals[floor] = [person]
+        return new_arrivals
 
 
 ###############################################################################
@@ -166,12 +199,12 @@ class MovingAlgorithm:
 
         Returns True if no one is waiting, False otherwise
         """
-        for floor in waiting.keys():
+        for floor in waiting:
             if waiting[floor]:
                 return False
         return True
 
-    def get_direction(self, target, current) -> Direction:
+    def get_direction(self, target: int, current: int) -> Direction:
         """ A helper function for the moving algorithms
 
         Returns the direction of travel for a given current position and target
@@ -197,7 +230,6 @@ class RandomAlgorithm(MovingAlgorithm):
         e_number = 0
         for e in elevators:
             e_number += 1
-            print('elevator', e_number, 'is at floor', e.current_floor)
             valid = False
             while not valid:
                 r = random.sample(choices, k=1)[0]
@@ -231,7 +263,8 @@ class PushyPassenger(MovingAlgorithm):
             else:
                 first_passenger = e.passengers[0]
                 destination = first_passenger.target
-                directions.append(self.get_direction(destination, e.current_floor))
+                directions.append(self.get_direction(destination,
+                                                     e.current_floor))
         return directions
 
     def _move_to_lowest_waiting(self, waiting: Dict[int, List[Person]],
@@ -265,27 +298,35 @@ class ShortSighted(MovingAlgorithm):
                        waiting: Dict[int, List[Person]],
                        max_floor: int) -> List[Direction]:
         directions = []
-        for e in elevators:
+        for i, e in enumerate(elevators):
+            # print('elevator', i, 'currently on floor', e.current_floor)
+            # for p in e.passengers:
+            #     print("passengers are:", p)
             num_people = len(e.passengers)
             if num_people == 0 and self.no_one_waiting(waiting):
                 directions.append(Direction.STAY)
+                print('elevator', i, 'staying still')
             elif num_people == 0:
-                direction = self.move_to_closest_waiting(waiting, max_floor, e)
+                direction = self.move_to_closest_waiting(waiting, e)
                 directions.append(direction)
+                print('elevator', i, 'going', direction)
             else:
                 target_floors = [passenger.target for passenger in e.passengers]
+                print("targets for passengers in elevator", i, 'are', target_floors)
                 curr = e.current_floor
                 gap = 1
-                found = False
-                while not found:
+                while True:
+                    # if curr in target_floors:
+                    #     # print('Error in other method')
+
                     # search the bottom
                     if curr-gap in target_floors:
                         directions.append(Direction.DOWN)
-                        found = True
+                        break
                     # search the top
                     elif curr+gap in target_floors:
                         directions.append(Direction.UP)
-                        found = True
+                        break
                     gap += 1
         return directions
 

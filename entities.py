@@ -44,7 +44,7 @@ class Elevator(ElevatorSprite):
     current_floor: int
     capacity: int
 
-    def __init__(self, capacity: int):
+    def __init__(self, capacity: int) -> None:
         ElevatorSprite.__init__(self)
         self.passengers = []
         self.current_floor = 1
@@ -53,8 +53,8 @@ class Elevator(ElevatorSprite):
     def fullness(self) -> float:
         """Return the fraction that this elevator is filled.
 
-           The value returned should be a float between 0.0 (completely empty) and
-           1.0 (completely full).
+           The value returned should be a float between 0.0 (completely empty)
+           and 1.0 (completely full).
         """
         return float(len(self.passengers) / self.capacity)
 
@@ -79,7 +79,7 @@ class Person(PersonSprite):
     target: int
     wait_time: int
 
-    def __init__(self, start: int, target: int):
+    def __init__(self, start: int, target: int) -> None:
         self.start = start
         self.target = target
         self.wait_time = 0
@@ -99,8 +99,8 @@ class Person(PersonSprite):
         #ANGER_LEVELS.get()
         return ANGER_LEVELS.get(self.wait_time, 4)  # 4 is the default value
 
-    def __str__(self):
-        return self.target
+    def __str__(self) -> str:
+        return "Person from " + str(self.start) + " to " + str(self.target)
 
 
 if __name__ == '__main__':

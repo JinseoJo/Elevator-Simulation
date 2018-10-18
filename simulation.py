@@ -19,56 +19,76 @@ remove any of the existing attributes.
 from typing import Dict, List, Any
 
 import algorithms
-from algorithms import Direction
 from entities import Person, Elevator
 from visualizer import Visualizer
+
+
+class SimulationParameters:
+    """Helper class containing relevant parameters for Simulation class
+    === Representation Invariants ===
+    num_iterations >= 0
+    num_floors >= 2
+    """
+    num_iterations: int
+    num_floors: int
+    arrival_generator: algorithms.ArrivalGenerator
+    moving_algorithm: algorithms.MovingAlgorithm
+
+    def __init__(self, config: Dict[str, Any]) -> None:
+        self.num_iterations = 0
+        self.num_floors = config['num_floors']
+        self.arrival_generator = config['arrival_generator']
+        self.moving_algorithm = config['moving_algorithm']
+
+
+class SimulationStatistics:
+    """Helper class storing statistics for Simulation"""
+    people_completed: List[Person]
+    total_people: int
+
+    def __init__(self) -> None:
+        self.people_completed = []
+        self.total_people = 0
 
 
 class Simulation:
     """The main simulation class.
 
     === Attributes ===
-    arrival_generator: the algorithm used to generate new arrivals.
     elevators: a list of the elevators in the simulation
-    moving_algorithm: the algorithm used to decide how to move elevators
-    num_floors: the number of floors
     visualizer: the Pygame visualizer used to visualize this simulation
+    visualize: True or False, indicates if simulation will be visualized
     waiting: a dictionary of people waiting for an elevator
              (keys are floor numbers, values are the list of waiting people)
+    stats: refer to SimulationStatistics class
+    parameters: refer to SimulationParameters class
     """
-    arrival_generator: algorithms.ArrivalGenerator
     elevators: List[Elevator]
-    moving_algorithm: algorithms.MovingAlgorithm
-    num_floors: int
     visualizer: Visualizer
+    visualize: bool
     waiting: Dict[int, List[Person]]
-    num_iterations: int
-    people_completed: List[Person]
+    stats: SimulationStatistics
+    parameters: SimulationParameters
 
     def __init__(self,
                  config: Dict[str, Any]) -> None:
         """Initialize a new simulation using the given configuration."""
 
-        self.config = config
-        self.num_floors = config['num_floors']
+        self.visualize = config['visualize']
 
         self.elevators = []
         for _ in range(config['num_elevators']):
             e = Elevator(config['elevator_capacity'])
             self.elevators.append(e)
-
-        self.arrival_generator = config['arrival_generator']
-        self.moving_algorithm = config['moving_algorithm']
-
         self.waiting = {}
-        self.num_iterations = 0
-        self.people_completed = []
+        self.stats = SimulationStatistics()
+        self.parameters = SimulationParameters(config)
 
         # Initialize the visualizer.
         # Note that this should be called *after* the other attributes
         # have been initialized.
         self.visualizer = Visualizer(self.elevators,
-                                     self.num_floors,
+                                     self.parameters.num_floors,
                                      config['visualize'])
 
     ############################################################################
@@ -85,7 +105,7 @@ class Simulation:
         Note: each run of the simulation starts from the same initial state
         (no people, all elevators are empty and start at floor 1).
         """
-        self.num_iterations = num_rounds
+        self.parameters.num_iterations = num_rounds
         for n in range(num_rounds):
             self.visualizer.render_header(n)
 
@@ -102,46 +122,48 @@ class Simulation:
             self._move_elevators()
 
             # Update wait times
-            for floor in self.waiting.keys():
-                self._update_wait_times(self.waiting[floor])
+            for floor in self.waiting:
+                _update_wait_times(self.waiting[floor])
             for elevator in self.elevators:
-                self._update_wait_times(elevator.passengers)
+                _update_wait_times(elevator.passengers)
 
-            # Pause for 1 second
-            self.visualizer.wait(1)
+            # Pause for 2 seconds
+            self.visualizer.wait(2)
 
         return self._calculate_stats()
 
     def _generate_arrivals(self, round_num: int) -> None:
         """Generate and visualize new arrivals."""
-        new_arrivals = self.arrival_generator.generate(round_num)
-        for floor in new_arrivals.keys():
+        new_arrivals = self.parameters.arrival_generator.generate(round_num)
+        for floor in new_arrivals:
             try:
                 self.waiting[floor].extend(new_arrivals[floor])
             except KeyError:
                 self.waiting[floor] = new_arrivals[floor]
-        if self.config['visualize']:
+            self.stats.total_people += len(new_arrivals[floor])
+        if self.visualize:
             self.visualizer.show_arrivals(new_arrivals)
 
     def _handle_leaving(self) -> None:
         """Handle people leaving elevators."""
 
         for elevator in self.elevators:
-            curr = elevator.passengers
-            if curr:
-                for person in curr:
-                    target = person.target
-                    if target == elevator.current_floor:
-                        # print("target", person.target, "leaving at floor",
-                        #       elevator.current_floor)
-                        curr.remove(person)
-                        self.people_completed.append(person)
-                        if self.config['visualize']:
-                            self.visualizer.show_disembarking(person, elevator)
+            to_remove = []
+            for person in elevator.passengers:
+                if person.target == elevator.current_floor:
+                    to_remove.append(True)
+                    self.stats.people_completed.append(person)
+                    if self.visualize:
+                        self.visualizer.show_disembarking(person, elevator)
+                else:
+                    to_remove.append(False)
+            new_list = [p for i, p in enumerate(elevator.passengers)
+                        if not to_remove[i]]
+            elevator.passengers = new_list[:]
 
     def _handle_boarding(self) -> None:
         """Handle boarding of people and visualize."""
-        for elevator in self.elevators:
+        for i, elevator in enumerate(self.elevators):
             num_people = len(elevator.passengers)
             floor = elevator.current_floor
             try:
@@ -152,30 +174,25 @@ class Simulation:
                 # pop(0) returns and removes the first person in waiting list
                 person_to_board = people_waiting.pop(0)
                 elevator.passengers.append(person_to_board)
-                if self.config['visualize']:
+                if self.visualize:
                     self.visualizer.show_boarding(person_to_board, elevator)
                 num_people = len(elevator.passengers)
-            # print(elevator.passengers)
 
     def _move_elevators(self) -> None:
         """Move the elevators in this simulation.
 
         Use this simulation's moving algorithm to move the elevators.
         """
-        directions = self.moving_algorithm.move_elevators(self.elevators,
-                                                          self.waiting,
-                                                          self.num_floors)
-        print("directions: ", directions)
+        directions = self.parameters.moving_algorithm.\
+            move_elevators(self.elevators,
+                           self.waiting,
+                           self.parameters.num_floors)
         for index, elevator in enumerate(self.elevators):
             elevator.current_floor += directions[index].value
+            print("elevator", index, "at floor", elevator.current_floor)
 
-        if self.config['visualize']:
+        if self.visualize:
             self.visualizer.show_elevator_moves(self.elevators, directions)
-
-    def _update_wait_times(self, people: List[Person]) -> None:
-        if people:
-            for person in people:
-                person.wait_time += 1
 
     ############################################################################
     # Statistics calculations
@@ -183,14 +200,18 @@ class Simulation:
     def _calculate_stats(self) -> Dict[str, int]:
         """Report the statistics for the current run of this simulation.
         """
-        num_iterations = self.num_iterations
-        num_per_round = self.config['num_people_per_round']
-        total_people = num_per_round * num_iterations
-        people_completed = len(self.people_completed)
-        wait_times = [person.wait_time for person in self.people_completed]
-        min_time = min(wait_times)
-        max_time = max(wait_times)
-        avg_time = sum(wait_times) / len(wait_times)
+        num_iterations = self.parameters.num_iterations
+        total_people = self.stats.total_people
+        people_completed = len(self.stats.people_completed)
+        wait_times = [p.wait_time for p in self.stats.people_completed]
+        if not wait_times:
+            max_time = -1
+            min_time = -1
+            avg_time = -1
+        else:
+            min_time = min(wait_times)
+            max_time = max(wait_times)
+            avg_time = int(sum(wait_times) / len(wait_times))
 
         return {
             'num_iterations': num_iterations,
@@ -202,29 +223,35 @@ class Simulation:
         }
 
 
+def _update_wait_times(people: List[Person]) -> None:
+    """Updates the wait times for the list of Person objects"""
+    if people:
+        for person in people:
+            person.wait_time += 1
+
+
 def sample_run() -> Dict[str, int]:
     """Run a sample simulation, and return the simulation statistics."""
     config = {
         'num_floors': 6,
         'floor_height': 10,
-        'num_elevators': 6,
-        'elevator_capacity': 3,
+        'num_elevators': 4,
+        'elevator_capacity': 2,
         'num_people_per_round': 2,
-        # Random arrival generator with 6 max floors and 2 arrivals per round.
-        'arrival_generator': algorithms.RandomArrivals(6, 2),
-        'moving_algorithm': algorithms.PushyPassenger(),
-        'visualize': True
+        'arrival_generator': algorithms.FileArrivals(6, 'test3.csv'),
+        'moving_algorithm': algorithms.ShortSighted(),
+        'visualize': False
     }
 
     sim = Simulation(config)
-    stats = sim.run(15)
+    stats = sim.run(20)
     return stats
 
 
 if __name__ == '__main__':
     # Uncomment this line to run our sample simulation (and print the
     # statistics generated by the simulation).
-    print(sample_run())
+    sample_run()
 
     # import python_ta
     # python_ta.check_all(config={
